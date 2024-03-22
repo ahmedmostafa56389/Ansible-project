@@ -1,0 +1,182 @@
+.
+├── ansible.cfg
+├── ansible-navigator.log
+├── file.txt
+├── inventory
+├── team-artifact-2024-03-18T11:43:09.259692+00:00.json
+├── team-artifact-2024-03-18T11:43:51.153189+00:00.json
+├── team-artifact-2024-03-18T11:44:37.207096+00:00.json
+├── team-artifact-2024-03-18T11:59:09.179743+00:00.json
+├── team-artifact-2024-03-18T12:01:22.570493+00:00.json
+├── team-artifact-2024-03-18T12:04:26.434311+00:00.json
+├── team-artifact-2024-03-18T12:09:36.773827+00:00.json
+├── team-artifact-2024-03-18T12:12:59.286934+00:00.json
+├── team-artifact-2024-03-18T12:17:29.974132+00:00.json
+├── team-artifact-2024-03-18T12:18:39.489548+00:00.json
+├── team-artifact-2024-03-18T12:19:30.781954+00:00.json
+├── team-artifact-2024-03-18T12:21:05.323198+00:00.json
+├── team.yml
+└── web_site/
+    ├── defaults/
+    │   └── main.yml
+    ├── files/
+    │   └── files/
+    │       ├── 20240318_124354.jpg
+    │       └── index.html
+    ├── handlers/
+    │   └── main.yml
+    ├── meta/
+    │   └── main.yml
+    ├── README.md
+    ├── tasks/
+    │   └── main.yml
+    ├── templates/
+    │   └── httpd.conf.j2
+    ├── tests/
+    │   ├── inventory
+    │   └── test.yml
+    └── vars/
+        └── main.yml
+
+10 directories, 28 files
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT</title>
+</head>
+<body>
+    <h1>WE ARE THE BEST</h1>
+    <p>OMAR SHABAN , AHMED MOSTAFA , ALI KHAMES:</p>
+    <img src="20240318_124354.jpg" alt="THE BEST" style="width:800px;height:500px;">
+</body>
+</html>
+---
+
+- name: restart httpd
+  ansible.builtin.service:
+    name: "{{ web_service }}"
+    state: restarted
+
+# handlers file for web_site
+---
+- name: Packages are installed
+  ansible.builtin.dnf:
+    name: "{{ web_package }}"
+    state: present
+
+- name: Ensure service is started
+  ansible.builtin.service:
+    name: "{{ web_service }}"
+    state: started
+    enabled: yes
+
+- name: Deploy configuration file
+  ansible.builtin.template:
+    src: templates/httpd.conf.j2
+    dest: "{{ web_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+    setype: httpd_config_t
+  notify: restart httpd
+
+- name: Deploy index.html file
+  ansible.builtin.copy:
+    src: files/index.html
+    dest: "{{ web_root }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Web port is open
+  ansible.builtin.firewalld:
+    service: "{{ web_fw_service }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: send photo
+  copy:
+    src: files/20240318_124354.jpg
+    dest: "{{ photo_root }}"
+    
+# tasks file for web_site
+# Ansible managed
+ServerRoot "/etc/httpd"
+Listen 80
+Include conf.modules.d/*.conf
+User apache
+Group apache
+ServerAdmin root@localhost
+<Directory />
+    AllowOverride none
+    Require all denied
+</Directory>
+DocumentRoot "/var/www/html"
+<Directory "/var/www">
+    AllowOverride None
+    Require all granted
+</Directory>
+<Directory "/var/www/html">
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+<Files ".ht*">
+    Require all denied
+</Files>
+ErrorLog "logs/error_log"
+LogLevel warn
+<IfModule log_config_module>
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    <IfModule logio_module>
+      LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+    </IfModule>
+    CustomLog "logs/access_log" combined
+</IfModule>
+<IfModule alias_module>
+    ScriptAlias /cgi-bin/ "/var/www/cgi-bin/"
+</IfModule>
+<Directory "/var/www/cgi-bin">
+    AllowOverride None
+    Options None
+    Require all granted
+</Directory>
+<IfModule mime_module>
+    TypesConfig /etc/mime.types
+    AddType application/x-compress .Z
+    AddType application/x-gzip .gz .tgz
+    AddType text/html .shtml
+    AddOutputFilter INCLUDES .shtml
+</IfModule>
+AddDefaultCharset UTF-8
+<IfModule mime_magic_module>
+    MIMEMagicFile conf/magic
+</IfModule>
+EnableSendfile on
+IncludeOptional conf.d/*.conf
+---
+
+web_package: httpd
+web_service: httpd
+web_config_file: /etc/httpd/conf/httpd.conf
+web_root: /var/www/html/index.html
+photo_root: /var/www/html/20240318_124354.jpg
+web_fw_service: http
+
+# vars file for web_site
+
+---
+- name: HTTPD server is installed
+  hosts: webdev
+  become: true
+  roles:
+    - web_site
+
